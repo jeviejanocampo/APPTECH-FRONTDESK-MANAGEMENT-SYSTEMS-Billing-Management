@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hotel Billing Adjustment Tickets</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+body{font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+.modal-backdrop{background:rgba(15,23,42,.58);backdrop-filter:blur(5px)}
+.field{display:flex;flex-direction:column;gap:.4rem}
+.field span{font-size:.7rem;font-weight:800;color:#64748b;text-transform:uppercase;letter-spacing:.05em}
+.field input,.field select,.field textarea{width:100%;border:1px solid #e2e8f0;border-radius:.7rem;padding:.65rem .75rem;outline:none;background:#fff}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:#60a5fa;box-shadow:0 0 0 3px rgba(96,165,250,.14)}
+.fade{animation:fade .18s ease-out}@keyframes fade{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
+.ticket-note{cursor:pointer}
+.ticket-note:hover{background:#eff6ff;border-color:#bfdbfe}
+</style>
+</head>
+
+<body class="bg-slate-100 text-slate-800 min-h-screen">
+
+<header class="bg-slate-950 text-white">
+  <div class="max-w-7xl mx-auto px-5 sm:px-8 py-5 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <div class="h-11 w-11 rounded-xl bg-blue-600 grid place-items-center font-black">GB</div>
+      <div>
+        <div class="font-bold text-lg">Grand Bay Hotel & Resort</div>
+        <div class="text-xs text-slate-400">Front Office • Billing Resolution</div>
+      </div>
+    </div>
+    <div class="hidden sm:block text-right">
+      <div class="text-xs text-slate-500">Billing Desk</div>
+      <div class="text-sm font-semibold">Adjustment Queue</div>
+    </div>
+  </div>
+</header>
+
+<main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-7 space-y-6">
+
+<section>
+  <div class="flex flex-col lg:flex-row lg:items-end justify-between gap-4">
+    <div>
+      <div class="text-xs text-blue-600 font-bold uppercase tracking-wider">Guest Account Management</div>
+      <h1 class="text-3xl font-black text-slate-950 mt-1">Billing Adjustment Tickets</h1>
+      <p class="text-slate-500 mt-1">Review guest billing complaints, investigate discrepancies, and apply the appropriate account adjustment.</p>
+    </div>
+    <button id="newBtn" class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl font-bold shadow-sm">＋ New Billing Ticket</button>
+  </div>
+</section>
+
+<section id="summary" class="grid grid-cols-1 sm:grid-cols-3 gap-4"></section>
+
+<section class="bg-blue-50 border border-blue-100 rounded-2xl p-5">
+  <div class="flex gap-4">
+    <div class="h-10 w-10 shrink-0 rounded-xl bg-blue-600 text-white grid place-items-center font-bold">!</div>
+    <div>
+      <h2 class="font-bold text-blue-950">Billing Complaint / Discrepancy</h2>
+      <p class="text-sm text-blue-900/70 mt-1">
+        A billing ticket is created when a guest or staff member reports that a charge does not match the actual transaction.
+        Staff review the note, verify the account, and then apply an adjustment.
+      </p>
+      <div class="mt-3 text-sm bg-white/70 border border-blue-100 rounded-xl px-4 py-3 inline-block">
+        <b>Example:</b> Guest reports a duplicate ₱450 breakfast charge →
+        Staff verifies the posting → Adjustment <b class="text-red-600">-₱450</b> →
+        Corrected account amount is calculated automatically.
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+  <div class="p-5 border-b border-slate-200">
+    <div class="flex flex-col lg:flex-row gap-3">
+      <div class="relative flex-1">
+        <span class="absolute left-3 top-2.5 text-slate-400">⌕</span>
+        <input id="search" placeholder="Search ticket, guest, room, complaint..."
+          class="w-full pl-9 pr-4 py-2.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400">
+      </div>
+      <select id="statusFilter" class="px-4 py-2.5 border border-slate-200 rounded-xl bg-white">
+        <option value="">All Statuses</option>
+        <option value="Pending">Pending</option>
+        <option value="Adjusted">Adjusted</option>
+        <option value="Rejected">Rejected</option>
+      </select>
+      <button id="clearBtn" class="px-4 py-2.5 border border-slate-200 rounded-xl hover:bg-slate-50 font-medium">Clear</button>
+    </div>
+  </div>
+
+  <div class="overflow-x-auto">
+    <table class="w-full text-sm min-w-[1250px]">
+      <thead class="bg-slate-50 text-[11px] uppercase tracking-wider text-slate-500">
+        <tr>
+          <th class="text-left px-5 py-3">Ticket ID</th>
+          <th class="text-left px-5 py-3">Guest</th>
+          <th class="text-left px-5 py-3">Room</th>
+          <th class="text-left px-5 py-3">Complaint / Discrepancy</th>
+          <th class="text-right px-5 py-3">Original</th>
+          <th class="text-right px-5 py-3">Proposed Adjustment</th>
+          <th class="text-right px-5 py-3">Corrected</th>
+          <th class="text-center px-5 py-3">Status</th>
+          <th class="text-left px-5 py-3">Note</th>
+          <th class="text-right px-5 py-3">Actions</th>
+        </tr>
+      </thead>
+      <tbody id="tableBody" class="divide-y divide-slate-100"></tbody>
+    </table>
+  </div>
+
+  <div id="empty" class="hidden text-center p-14">
+    <div class="h-12 w-12 mx-auto rounded-2xl bg-slate-100 grid place-items-center text-slate-400 text-xl">⌕</div>
+    <h3 class="font-bold mt-3">No billing tickets found</h3>
+    <p class="text-sm text-slate-500 mt-1">Try another search or filter.</p>
+  </div>
+
+  <div class="px-5 py-3 border-t bg-slate-50 text-xs text-slate-500"><span id="count"></span></div>
+</section>
+
+</main>
+
+<!-- TICKET VIEW / NOTE MODAL -->
+<div id="viewModal" class="hidden fixed inset-0 z-50 modal-backdrop overflow-y-auto p-4">
+<div class="max-w-3xl mx-auto bg-white rounded-2xl shadow-2xl fade overflow-hidden">
+  <div class="px-6 py-4 border-b flex justify-between items-center">
+    <div>
+      <div class="flex items-center gap-2"><span id="viewTicket" class="font-bold text-lg"></span><span id="viewStatus"></span></div>
+      <p class="text-xs text-slate-500 mt-1">Billing complaint / adjustment ticket</p>
+    </div>
+    <button id="closeView" class="h-9 w-9 rounded-lg hover:bg-slate-100 text-xl">×</button>
+  </div>
+  <div id="viewContent" class="p-6"></div>
+  <div class="px-6 py-4 border-t bg-slate-50 flex justify-between">
+    <button id="viewEdit" class="px-4 py-2 rounded-xl border border-slate-200 font-semibold">Edit Ticket</button>
+    <button id="viewClose" class="px-4 py-2 rounded-xl bg-slate-900 text-white font-semibold">Close</button>
+  </div>
+</div>
+</div>
+
+<!-- ADD / EDIT MODAL -->
+<div id="formModal" class="hidden fixed inset-0 z-50 modal-backdrop overflow-y-auto p-4">
+<div class="max-w-3xl mx-auto bg-white rounded-2xl shadow-2xl fade overflow-hidden">
+  <div class="px-6 py-4 border-b flex justify-between">
+    <div>
+      <h2 id="formTitle" class="font-bold text-lg">New Billing Ticket</h2>
+      <p class="text-xs text-slate-500 mt-1">Record the guest complaint and proposed correction.</p>
+    </div>
+    <button id="closeForm" class="h-9 w-9 rounded-lg hover:bg-slate-100 text-xl">×</button>
+  </div>
+
+  <div class="p-6 space-y-5">
+    <div class="grid sm:grid-cols-2 gap-4">
+      <label class="field"><span>Guest Name</span><input id="fGuest"></label>
+      <label class="field"><span>Room Number</span><input id="fRoom"></label>
+      <label class="field"><span>Booking Reference</span><input id="fBooking"></label>
+      <label class="field"><span>Discrepancy Type</span>
+        <select id="fType">
+          <option>Duplicate Charge</option>
+          <option>Incorrect Room Rate</option>
+          <option>Missing Charge</option>
+          <option>Incorrect Minibar Charge</option>
+          <option>Incorrect Service Charge</option>
+          <option>Wrong Quantity</option>
+          <option>Wrong Payment Amount</option>
+          <option>Other</option>
+        </select>
+      </label>
+    </div>
+
+    <label class="field"><span>Guest Complaint / Discrepancy</span><input id="fDescription" placeholder="Example: Guest says breakfast was charged twice."></label>
+
+    <div class="grid sm:grid-cols-3 gap-4">
+      <label class="field"><span>Original Amount (₱) — Enter After Review</span><input id="fOriginal" type="number" min="0" step="0.01"></label>
+      <label class="field"><span>Adjustment (₱) — Your Decision</span><input id="fAdjustment" type="number" step="0.01"></label>
+      <div class="rounded-xl bg-slate-50 border border-slate-200 p-3">
+        <div class="text-[11px] uppercase font-bold text-slate-500">Corrected Amount</div>
+        <div id="correctedPreview" class="text-2xl font-black text-emerald-700 mt-2">₱0.00</div>
+        <div class="text-[11px] text-slate-400 mt-1">Original + Adjustment</div>
+      </div>
+    </div>
+
+    <div class="grid sm:grid-cols-2 gap-4">
+      <label class="field"><span>Status</span>
+        <select id="fStatus"><option>Pending</option><option>Adjusted</option><option>Rejected</option></select>
+      </label>
+      <label class="field"><span>Staff Responsible</span><input id="fStaff"></label>
+    </div>
+
+    <label class="field"><span>Reason / Investigation</span><textarea id="fReason" rows="3" placeholder="Why is the guest requesting an adjustment? What did staff verify?"></textarea></label>
+    <label class="field"><span>Staff Note / Resolution Note</span><textarea id="fNotes" rows="3" placeholder="Add a note that will appear in the ticket table."></textarea></label>
+  </div>
+
+  <div class="px-6 py-4 border-t bg-slate-50 flex justify-end gap-2">
+    <button id="cancelForm" class="px-4 py-2.5 rounded-xl border border-slate-200 font-semibold">Cancel</button>
+    <button id="saveForm" class="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold">Save Ticket</button>
+  </div>
+</div>
+</div>
+
+<!-- DELETE MODAL -->
+<div id="deleteModal" class="hidden fixed inset-0 z-[60] modal-backdrop grid place-items-center p-4">
+<div class="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6">
+  <div class="h-11 w-11 rounded-xl bg-red-50 text-red-600 grid place-items-center font-black">!</div>
+  <h3 class="font-bold text-lg mt-4">Delete billing ticket?</h3>
+  <p class="text-sm text-slate-500 mt-1">This ticket will be removed from the demonstration queue.</p>
+  <div class="flex justify-end gap-2 mt-6">
+    <button id="cancelDelete" class="px-4 py-2 rounded-xl border">Cancel</button>
+    <button id="confirmDelete" class="px-4 py-2 rounded-xl bg-red-600 text-white font-bold">Delete</button>
+  </div>
+</div>
+</div>
+
+<div id="toast" class="hidden fixed right-5 bottom-5 z-[70]">
+  <div class="bg-slate-950 text-white px-4 py-3 rounded-xl shadow-xl text-sm flex items-center gap-2">
+    <span class="text-emerald-400">●</span><span id="toastText"></span>
+  </div>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const peso=n=>'₱'+Number(n||0).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2});
+
+const sampleTickets=[
+{id:'ADJ-001',guest:'Juan Dela Cruz',room:'502',booking:'BK-2026-01872',type:'Duplicate Charge',description:'Duplicate breakfast charge',original:0,adjustment:0,status:'Pending',staff:'Front Desk – Maria',reason:'Guest complained that the breakfast buffet appears twice on the guest account. Staff needs to compare the restaurant posting with the guest breakfast entitlement.',notes:'Guest says: “I only had breakfast once, but I can see two breakfast charges on my account. Please check and remove the duplicate charge if confirmed.”'},
+{id:'ADJ-002',guest:'Maria Santos',room:'305',booking:'BK-2026-01871',type:'Incorrect Room Rate',description:'Incorrect room rate',original:0,adjustment:0,status:'Pending',staff:'Front Desk – Carlo',reason:'Guest states that the confirmed reservation rate is different from the room charge currently appearing on the account. Staff should verify the booking confirmation.',notes:'Guest says: “The rate on my reservation confirmation is lower than what appears on my bill. Can you check the agreed room rate?”'},
+{id:'ADJ-003',guest:'Pedro Reyes',room:'214',booking:'BK-2026-01870',type:'Missing Charge',description:'Missing laundry charge',original:0,adjustment:0,status:'Pending',staff:'Front Desk – Ana',reason:'Laundry service was completed but appears not to have been posted to the guest account. Staff should verify the laundry receipt before adding the charge.',notes:'Staff note: “Laundry service was requested and completed during the stay, but no corresponding laundry transaction appears in the guest account. Please verify the receipt and post the correct charge if confirmed.”'},
+{id:'ADJ-004',guest:'Ana Garcia',room:'410',booking:'BK-2026-01869',type:'Incorrect Minibar Charge',description:'Incorrect minibar charge',original:0,adjustment:0,status:'Pending',staff:'Front Desk – Maria',reason:'Guest disputes a minibar item and says it was not consumed. Staff should compare the minibar checklist with the posted transaction.',notes:'Guest says: “I did not consume one of the minibar items listed on my bill. Please check the minibar record and remove the charge if it was posted incorrectly.”'},
+{id:'ADJ-005',guest:'Carlos Ramos',room:'601',booking:'BK-2026-01868',type:'Missing Charge',description:'Late checkout not posted',original:0,adjustment:0,status:'Pending',staff:'Front Desk – James',reason:'Guest checked out after the approved checkout time. The account may be missing a late checkout charge. Staff should verify the approved late checkout record and applicable hotel rate.',notes:'Staff note: “The guest was granted a late checkout. The fee may not have been posted to the account. Please verify the checkout time and apply the correct charge if required.”'},
+{id:'ADJ-006',guest:'Sofia Navarro',room:'410',booking:'BK-2026-01865',type:'Wrong Quantity',description:'Breakfast quantity overstated',original:0,adjustment:0,status:'Pending',staff:'Front Desk – Lea',reason:'Guest believes the number of breakfast covers posted to the account is higher than the number actually consumed. Staff should check the restaurant record.',notes:'Guest says: “There were fewer people having breakfast than the number shown on my bill. Please check the breakfast posting and correct the quantity if necessary.”'},
+{id:'ADJ-007',guest:'Robert Tan',room:'705',booking:'BK-2026-01862',type:'Incorrect Service Charge',description:'Service charge posted incorrectly',original:0,adjustment:0,status:'Pending',staff:'Front Desk – Carlo',reason:'Guest questions the service charge applied to a room service transaction. Staff should review the receipt and the applicable hotel service charge rate.',notes:'Guest says: “The service charge on my room service bill looks incorrect. Please verify how it was calculated and make the necessary correction.”'},
+{id:'ADJ-008',guest:'Nina Garcia',room:'209',booking:'BK-2026-01859',type:'Wrong Payment Amount',description:'Payment entered incorrectly',original:0,adjustment:0,status:'Pending',staff:'Front Desk – James',reason:'Guest presents a payment receipt showing an amount different from the payment currently recorded in the system. Staff should reconcile the receipt with the payment record.',notes:'Guest says: “I already made a payment, but the amount shown in my account is not the same as my receipt. Please verify the payment and correct the account.”'},
+{id:'ADJ-009',guest:'Daniel Cruz',room:'312',booking:'BK-2026-01855',type:'Duplicate Charge',description:'Duplicate airport transfer',original:0,adjustment:0,status:'Pending',staff:'Front Desk – Maria',reason:'Two airport transfer postings may exist for the same guest even though only one transfer was requested. Staff should verify the transportation record.',notes:'Guest says: “I only booked one airport transfer, but I see two transfer charges on my account. Please check the transportation record and remove the duplicate if confirmed.”'},
+{id:'ADJ-010',guest:'Rachel Lim',room:'808',booking:'BK-2026-01850',type:'Other',description:'Promotional discount not applied',original:0,adjustment:0,status:'Pending',staff:'Front Desk – Ana',reason:'Guest presents a promotional booking confirmation that may entitle the reservation to a discount. Staff should verify the booking terms before applying the appropriate correction.',notes:'Guest says: “My reservation included a promotional discount, but I do not see it reflected in my bill. Please check my booking confirmation and apply the discount if it is valid.”'}
+];
+
+let records=JSON.parse(localStorage.getItem('gb_billing_tickets')||'null')||sampleTickets;
+let editingId=null,deletingId=null,viewingId=null;
+
+function persist(){localStorage.setItem('gb_billing_tickets',JSON.stringify(records))}
+function badge(s){
+ const c=s==='Adjusted'?'bg-emerald-50 text-emerald-700 border-emerald-200':s==='Pending'?'bg-amber-50 text-amber-700 border-amber-200':'bg-red-50 text-red-700 border-red-200';
+ return `<span class="inline-flex px-2.5 py-1 rounded-full border text-[11px] font-bold ${c}">${s}</span>`;
+}
+function toast(m){$('toastText').textContent=m;$('toast').classList.remove('hidden');clearTimeout(window.tt);window.tt=setTimeout(()=>$('toast').classList.add('hidden'),2500)}
+function nextId(){const nums=records.map(x=>parseInt(x.id.split('-')[1])).filter(Number.isFinite);return 'ADJ-'+String(Math.max(0,...nums)+1).padStart(3,'0')}
+function renderSummary(){
+ const pending=records.filter(x=>x.status==='Pending').length;
+ const adjusted=records.filter(x=>x.status==='Adjusted').reduce((s,x)=>s+Math.abs(x.adjustment),0);
+ $('summary').innerHTML=[
+ ['Open Tickets',pending,'◐','bg-amber-50 text-amber-600'],
+ ['Total Tickets',records.length,'▤','bg-blue-50 text-blue-600'],
+ ['Adjusted Amount',peso(adjusted),'₱','bg-emerald-50 text-emerald-600']
+ ].map(c=>`<div class="bg-white border border-slate-200 rounded-2xl shadow-sm p-5"><div class="flex justify-between"><div><div class="text-xs uppercase tracking-wider text-slate-500">${c[0]}</div><div class="text-2xl font-black mt-2">${c[1]}</div></div><div class="h-11 w-11 rounded-xl ${c[3]} grid place-items-center font-bold">${c[2]}</div></div></div>`).join('');
+}
+function renderTable(){
+ const q=$('search').value.toLowerCase().trim(),filter=$('statusFilter').value;
+ const rows=records.filter(x=>{const hay=[x.id,x.guest,x.room,x.description,x.type,x.notes].join(' ').toLowerCase();return(!q||hay.includes(q))&&(!filter||x.status===filter)});
+ $('count').textContent=`Showing ${rows.length} of ${records.length} billing tickets`;
+ $('empty').classList.toggle('hidden',rows.length>0);
+ $('tableBody').innerHTML=rows.map(x=>`
+ <tr class="hover:bg-slate-50">
+  <td class="px-5 py-4 font-bold text-blue-700">${x.id}</td>
+  <td class="px-5 py-4 font-medium">${x.guest}</td>
+  <td class="px-5 py-4">${x.room}</td>
+  <td class="px-5 py-4"><div class="font-medium">${x.description}</div><div class="text-xs text-slate-400">${x.type}</div></td>
+  <td class="px-5 py-4 text-right">${x.original ? peso(x.original) : '<span class="text-slate-400 italic">Not entered</span>'}</td>
+  <td class="px-5 py-4 text-right font-bold">${x.adjustment ? `<span class="${x.adjustment<0?'text-red-600':'text-emerald-600'}">${x.adjustment>0?'+':''}${peso(x.adjustment)}</span>` : '<span class="text-slate-400 italic">Not entered</span>'}</td>
+  <td class="px-5 py-4 text-right font-bold">${x.original || x.adjustment ? peso(x.original+x.adjustment) : '<span class="text-slate-400 italic">Pending review</span>'}</td>
+  <td class="px-5 py-4 text-center">${badge(x.status)}</td>
+  <td class="px-5 py-4">
+    <button onclick="viewRecord('${x.id}')" class="ticket-note text-left border border-slate-200 rounded-lg px-3 py-2 max-w-[260px]">
+      <div class="text-[10px] uppercase font-bold text-blue-600 mb-1">View Note</div>
+      <div class="text-xs text-slate-600 truncate">${escapeHTML(x.notes)}</div>
+    </button>
+  </td>
+  <td class="px-5 py-4"><div class="flex justify-end gap-1">
+    <button onclick="viewRecord('${x.id}')" title="View ticket" class="p-2 rounded-lg hover:bg-blue-50 text-blue-600">◉</button>
+    <button onclick="editRecord('${x.id}')" title="Adjust / Edit" class="p-2 rounded-lg hover:bg-slate-100">✎</button>
+    <button onclick="askDelete('${x.id}')" title="Delete" class="p-2 rounded-lg hover:bg-red-50 text-red-600">⌫</button>
+  </div></td>
+ </tr>`).join('');
+}
+function render(){renderSummary();renderTable()}
+
+function viewRecord(id){
+ viewingId=id;const x=records.find(r=>r.id===id);if(!x)return;
+ $('viewTicket').textContent=x.id;$('viewStatus').innerHTML=badge(x.status);
+ $('viewContent').innerHTML=`
+ <div class="grid sm:grid-cols-2 gap-x-8 gap-y-5">
+  ${detail('Guest',x.guest)}${detail('Room',x.room)}${detail('Booking',x.booking)}${detail('Discrepancy',x.description)}${detail('Type',x.type)}${detail('Staff Responsible',x.staff)}
+ </div>
+ <div class="grid grid-cols-3 gap-3 mt-6">
+  ${moneyPending('Original',x.original,'text-slate-800')}
+  ${moneyPending('Proposed Adjustment',x.adjustment,x.adjustment<0?'text-red-600':'text-emerald-600')}
+  ${moneyPending('Corrected',x.original+x.adjustment,'text-blue-700')}
+ </div>
+ <div class="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-4">
+  <div class="flex justify-between items-center"><h3 class="font-bold text-amber-950">Guest Complaint / Note</h3><span class="text-xs font-bold text-amber-700">TICKET NOTE</span></div>
+  <p class="text-sm text-amber-900/80 mt-2 leading-6">${escapeHTML(x.notes)}</p>
+ </div>
+ <div class="mt-5 space-y-4">
+  <div><div class="text-xs uppercase font-bold text-slate-400">Reason / Investigation</div><p class="text-sm bg-slate-50 rounded-xl p-4 mt-1 leading-6">${escapeHTML(x.reason)}</p></div>
+  <div><div class="text-xs uppercase font-bold text-slate-400">Adjustment Status</div><p class="text-sm bg-slate-50 rounded-xl p-4 mt-1">${x.original || x.adjustment ? `<b>${peso(x.original)}</b> + <b>${x.adjustment<0?'-':''}${peso(Math.abs(x.adjustment))}</b> = <b class="text-blue-700">${peso(x.original+x.adjustment)}</b>` : `<span class="text-amber-700 font-semibold">No financial adjustment entered yet. Review the complaint and decide the correction.</span>`}</p></div>
+ </div>`;
+ $('viewModal').classList.remove('hidden');document.body.classList.add('overflow-hidden');
+}
+function detail(a,b){return `<div><div class="text-xs uppercase font-bold text-slate-400">${a}</div><div class="font-semibold mt-1">${escapeHTML(b||'—')}</div></div>`}
+function moneyPending(a,b,c){
+ const hasValue=Number(b)!==0;
+ return `<div class="rounded-xl border border-slate-200 bg-slate-50 p-3"><div class="text-[10px] uppercase font-bold text-slate-400">${a}</div><div class="text-lg font-black mt-1 ${hasValue?c:'text-slate-400'}">${hasValue?(b<0?'-':'')+peso(Math.abs(b)):'Not entered'}</div></div>`
+}
+function escapeHTML(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]))}
+
+function openForm(x=null){
+ editingId=x?.id||null;$('formTitle').textContent=x?'Edit Billing Ticket':'New Billing Ticket';
+ $('fGuest').value=x?.guest||'';$('fRoom').value=x?.room||'';$('fBooking').value=x?.booking||'';
+ $('fType').value=x?.type||'Duplicate Charge';$('fDescription').value=x?.description||'';
+ $('fOriginal').value=(x && x.original) ? x.original : '';$('fAdjustment').value=(x && x.adjustment) ? x.adjustment : '';
+ $('fStatus').value=x?.status||'Pending';$('fStaff').value=x?.staff||'';
+ $('fReason').value=x?.reason||'';$('fNotes').value=x?.notes||'';
+ updateCorrected();$('formModal').classList.remove('hidden');document.body.classList.add('overflow-hidden');
+}
+function closeForm(){$('formModal').classList.add('hidden');document.body.classList.remove('overflow-hidden')}
+function updateCorrected(){
+ const original=$('fOriginal').value.trim(), adjustment=$('fAdjustment').value.trim();
+ if(original==='' && adjustment===''){$('correctedPreview').textContent='Awaiting adjustment';return}
+ const n=(Number(original)||0)+(Number(adjustment)||0);
+ $('correctedPreview').textContent=peso(n)
+}
+function collect(){
+ return {id:editingId||nextId(),guest:$('fGuest').value.trim(),room:$('fRoom').value.trim(),booking:$('fBooking').value.trim(),type:$('fType').value,description:$('fDescription').value.trim(),original:Number($('fOriginal').value)||0,adjustment:Number($('fAdjustment').value)||0,status:$('fStatus').value,staff:$('fStaff').value.trim(),reason:$('fReason').value.trim(),notes:$('fNotes').value.trim()};
+}
+function saveForm(){
+ const x=collect();
+ if(!x.guest||!x.room||!x.description||!x.notes){toast('Please complete the guest, complaint, and note fields.');return}
+ if(editingId){records=records.map(r=>r.id===editingId?x:r);toast('Billing ticket updated successfully.')}
+ else{records.unshift(x);toast('New billing ticket created successfully.')}
+ persist();closeForm();render();
+}
+function editRecord(id){const x=records.find(r=>r.id===id);if(x)openForm(x)}
+function askDelete(id){deletingId=id;$('deleteModal').classList.remove('hidden')}
+function closeDelete(){deletingId=null;$('deleteModal').classList.add('hidden')}
+function confirmDelete(){records=records.filter(x=>x.id!==deletingId);persist();closeDelete();render();toast('Billing ticket deleted.')}
+
+$('newBtn').onclick=()=>openForm();
+$('closeView').onclick=()=>{$('viewModal').classList.add('hidden');document.body.classList.remove('overflow-hidden')};
+$('viewClose').onclick=()=>{$('viewModal').classList.add('hidden');document.body.classList.remove('overflow-hidden')};
+$('viewEdit').onclick=()=>{const x=records.find(r=>r.id===viewingId);$('viewModal').classList.add('hidden');if(x)openForm(x)};
+$('closeForm').onclick=closeForm;$('cancelForm').onclick=closeForm;$('saveForm').onclick=saveForm;
+$('fOriginal').oninput=updateCorrected;$('fAdjustment').oninput=updateCorrected;
+$('search').oninput=renderTable;$('statusFilter').onchange=renderTable;
+$('clearBtn').onclick=()=>{$('search').value='';$('statusFilter').value='';renderTable()};
+$('cancelDelete').onclick=closeDelete;$('confirmDelete').onclick=confirmDelete;
+window.viewRecord=viewRecord;window.editRecord=editRecord;window.askDelete=askDelete;
+render();
+</script>
+</body>
+</html>
